@@ -145,7 +145,7 @@ h1,h2{font-family:var(--font-display);text-wrap:balance;margin:0}
         <label for="valor">Valor</label>
         <div class="amount-wrap">
           <span class="currency">R$</span>
-          <input type="number" id="valor" inputmode="decimal" step="0.01" min="0" placeholder="0,00">
+          <input type="text" id="valor" inputmode="decimal" placeholder="0,00">
         </div>
       </div>
 
@@ -252,6 +252,20 @@ h1,h2{font-family:var(--font-display);text-wrap:balance;margin:0}
     var d = new Date();
     var tzOffsetMs = d.getTimezoneOffset() * 60000;
     return new Date(d.getTime() - tzOffsetMs).toISOString().slice(0, 10);
+  }
+  function parseMoeda(raw){
+    if(raw == null) return NaN;
+    var s = String(raw).trim().replace(/[^0-9.,]/g, '');
+    if(!s) return NaN;
+    if(s.indexOf(',') !== -1){
+      s = s.split('.').join('').replace(',', '.');
+    } else if(s.indexOf('.') !== -1){
+      var parts = s.split('.');
+      if(parts.length > 2 || parts[parts.length - 1].length === 3){
+        s = parts.join('');
+      }
+    }
+    return parseFloat(s);
   }
   function toBR(iso){
     if(!iso) return '';
@@ -440,7 +454,7 @@ h1,h2{font-family:var(--font-display);text-wrap:balance;margin:0}
       return;
     }
     var valorRaw = document.getElementById('valor').value;
-    var valor = parseFloat(valorRaw);
+    var valor = parseMoeda(valorRaw);
     if(!valorRaw || isNaN(valor) || valor <= 0){
       showBanner('error', 'Informe um valor maior que zero.');
       document.getElementById('valor').focus();
