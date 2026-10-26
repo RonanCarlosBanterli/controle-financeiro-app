@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Controle Financeiro</title>
+<meta name="description" content="Lance receitas e despesas direto na planilha do Google Sheets.">
+<meta name="theme-color" content="#1F3864">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Financeiro">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#EEF1F4; --surface:#FFFFFF; --fg:#16213A; --muted:#5B6B82;
+  --accent:#1F3864; --receita:#1F7A4D; --despesa:#B23A2E; --pendente:#AD7A10;
+  --border:#D7DEE6; --surface-2:#F6F8FA;
+  --font-display:'Fraunces',Georgia,'Times New Roman',serif;
+  --font-body:'Work Sans',-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'IBM Plex Mono','SF Mono',Consolas,monospace;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1720; --surface:#172231; --fg:#E8EDF4; --muted:#93A2B5;
+    --accent:#6E93C9; --receita:#4CAF7D; --despesa:#E08677; --pendente:#D9A441;
+    --border:#2A3647; --surface-2:#1D2A3B; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1720; --surface:#172231; --fg:#E8EDF4; --muted:#93A2B5;
+  --accent:#6E93C9; --receita:#4CAF7D; --despesa:#E08677; --pendente:#D9A441;
+  --border:#2A3647; --surface-2:#1D2A3B; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:var(--bg); color:var(--fg); font-family:var(--font-body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+h1,h2{font-family:var(--font-display);text-wrap:balance;margin:0}
+.app{max-width:520px;margin:0 auto;padding-bottom:96px}
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--surface);border-bottom:1px solid var(--border);margin:0 -16px}
+.topbar-inner{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.topbar h1{font-size:21px;font-weight:600;color:var(--fg)}
+.topbar .sub{font-size:12px;color:var(--accent);font-weight:500;margin-top:2px}
+.conn{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);white-space:nowrap}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.conn[data-state="ok"] .conn-dot{background:var(--receita)}
+.conn[data-state="error"] .conn-dot{background:var(--despesa)}
+.conn[data-state="checking"] .conn-dot{background:var(--pendente);animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.content{padding:16px 0 8px}
+.banner{border-radius:10px;padding:12px 14px;font-size:13.5px;margin-bottom:14px;border:1px solid transparent;line-height:1.45}
+.banner[data-kind="error"]{background:color-mix(in srgb, var(--despesa) 14%, var(--surface));border-color:color-mix(in srgb, var(--despesa) 35%, transparent);color:var(--fg)}
+.banner[data-kind="success"]{background:color-mix(in srgb, var(--receita) 14%, var(--surface));border-color:color-mix(in srgb, var(--receita) 35%, transparent);color:var(--fg)}
+.banner[data-kind="info"]{background:var(--surface-2);border-color:var(--border);color:var(--muted)}
+.banner button{margin-top:8px;background:none;border:1px solid currentColor;color:inherit;border-radius:7px;padding:5px 10px;font-size:12.5px;font-family:var(--font-body);cursor:pointer}
+.segmented{display:flex;background:var(--surface-2);border:1px solid var(--border);border-radius:11px;padding:3px;gap:3px}
+.seg-btn{flex:1;border:none;background:transparent;padding:10px 8px;border-radius:8px;font-family:var(--font-body);font-weight:600;font-size:14px;color:var(--muted);cursor:pointer}
+.seg-despesa.active{background:var(--despesa);color:#fff}
+.seg-receita.active{background:var(--receita);color:#fff}
+.seg-pago.active{background:var(--receita);color:#fff}
+.seg-pendente.active{background:var(--pendente);color:#fff}
+.segmented-status{margin-top:4px}
+#entryForm{display:flex;flex-direction:column;gap:14px;margin-top:14px}
+.amount-field label{display:block;font-size:12.5px;color:var(--muted);font-weight:600;margin-bottom:6px}
+.amount-wrap{display:flex;align-items:center;gap:8px;background:var(--surface);border:2px solid var(--border);border-radius:12px;padding:12px 14px}
+.app[data-tipo="Despesa"] .amount-wrap{border-color:var(--despesa)}
+.app[data-tipo="Receita"] .amount-wrap{border-color:var(--receita)}
+.currency{font-family:var(--font-mono);font-weight:600;font-size:20px;color:var(--muted)}
+.app[data-tipo="Despesa"] .currency{color:var(--despesa)}
+.app[data-tipo="Receita"] .currency{color:var(--receita)}
+.amount-wrap input{border:none;background:transparent;font-family:var(--font-mono);font-size:26px;font-weight:600;color:var(--fg);width:100%;font-variant-numeric:tabular-nums;outline:none}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field label{font-size:12.5px;color:var(--muted);font-weight:600}
+.field input,.field select{
+  font-family:var(--font-body);font-size:15px;color:var(--fg);background:var(--surface);
+  border:1px solid var(--border);border-radius:10px;padding:10px 11px;width:100%;min-width:0;
+}
+.field select:disabled,.field input:disabled{opacity:.6}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row-parcelas{display:flex;align-items:flex-end;gap:8px}
+.field-small{max-width:84px}
+.parcelas-sep{color:var(--muted);font-size:13px;padding-bottom:10px}
+.venc-toggle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-top:2px}
+.venc-toggle input{width:auto}
+.recent{margin-top:28px}
+.recent h2{font-size:15px;font-weight:600;color:var(--fg);margin-bottom:10px}
+.recent-list{display:flex;flex-direction:column;gap:8px}
+.recent-item{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:11px 13px}
+.recent-main{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.pill{font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:2px 8px;border-radius:999px}
+.pill-despesa{background:color-mix(in srgb, var(--despesa) 18%, transparent);color:var(--despesa)}
+.pill-receita{background:color-mix(in srgb, var(--receita) 18%, transparent);color:var(--receita)}
+.pill-pago{background:color-mix(in srgb, var(--receita) 18%, transparent);color:var(--receita)}
+.pill-pendente{background:color-mix(in srgb, var(--pendente) 20%, transparent);color:var(--pendente)}
+.recent-cat{font-size:13px;font-weight:600;color:var(--fg)}
+.recent-desc{font-size:13px;color:var(--muted);margin-bottom:6px;overflow-wrap:anywhere}
+.recent-meta{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.recent-valor{font-family:var(--font-mono);font-weight:600;color:var(--fg);font-variant-numeric:tabular-nums;margin-left:auto}
+.recent-empty,.recent-loading{font-size:13px;color:var(--muted);padding:14px;text-align:center;border:1px dashed var(--border);border-radius:11px}
+.save-bar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--border);padding:10px max(16px,env(safe-area-inset-right,0px)) max(10px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));z-index:9}
+.save-bar-inner{max-width:520px;margin:0 auto}
+.save-btn{width:100%;border:none;border-radius:12px;padding:14px;font-family:var(--font-body);font-weight:700;font-size:16px;color:#fff;background:var(--accent);cursor:pointer}
+.app[data-tipo="Despesa"] .save-btn{background:var(--despesa)}
+.app[data-tipo="Receita"] .save-btn{background:var(--receita)}
+.save-btn:disabled{opacity:.55;cursor:default}
+@media (max-width:360px){.row2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="app" id="app" data-tipo="Despesa">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div>
+        <h1>Controle Financeiro</h1>
+        <div class="sub">Lançamento rápido</div>
+      </div>
+      <div class="conn" id="connStatus" data-state="checking"><span class="conn-dot"></span><span id="connLabel">Conectando…</span></div>
+    </div>
+  </header>
+
+  <main class="content">
+    <div id="banner" class="banner" hidden></div>
+
+    <form id="entryForm" novalidate>
+      <div class="segmented" id="tipoToggle">
+        <button type="button" class="seg-btn seg-despesa active" data-tipo="Despesa">Despesa</button>
+        <button type="button" class="seg-btn seg-receita" data-tipo="Receita">Receita</button>
+      </div>
+
+      <div class="amount-field">
+        <label for="valor">Valor</label>
+        <div class="amount-wrap">
+          <span class="currency">R$</span>
+          <input type="number" id="valor" inputmode="decimal" step="0.01" min="0" placeholder="0,00">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="categoria">Categoria</label>
+        <select id="categoria" disabled><option value="">Carregando…</option></select>
+      </div>
+
+      <div class="field">
+        <label for="descricao">Descrição</label>
+        <input type="text" id="descricao" placeholder="Ex: Supermercado, Uber, Salário…" autocomplete="off">
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label for="data">Data</label>
+          <input type="date" id="data">
+        </div>
+        <div class="field">
+          <label for="vencimento">Vencimento</label>
+          <input type="date" id="vencimento" disabled>
+        </div>
+      </div>
+      <label class="venc-toggle"><input type="checkbox" id="vencIgual" checked> Vencimento igual à data</label>
+
+      <div class="row2">
+        <div class="field">
+          <label for="formaPagamento">Forma de pagamento</label>
+          <select id="formaPagamento" disabled><option value="">Carregando…</option></select>
+        </div>
+        <div class="field">
+          <label for="contaCartao">Conta/Cartão</label>
+          <select id="contaCartao" disabled><option value="">Carregando…</option></select>
+        </div>
+      </div>
+
+      <div class="row-parcelas">
+        <div class="field field-small">
+          <label for="parcelaAtual">Parcela</label>
+          <input type="number" id="parcelaAtual" min="1" value="1">
+        </div>
+        <span class="parcelas-sep">de</span>
+        <div class="field field-small">
+          <label for="totalParcelas">Total</label>
+          <input type="number" id="totalParcelas" min="1" value="1">
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label for="responsavel">Responsável</label>
+          <select id="responsavel" disabled><option value="">Carregando…</option></select>
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <div class="segmented segmented-status" id="statusToggle">
+            <button type="button" class="seg-btn seg-pago active" data-status="Pago">Pago</button>
+            <button type="button" class="seg-btn seg-pendente" data-status="Pendente">Pendente</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="observacoes">Observações</label>
+        <input type="text" id="observacoes" placeholder="Opcional" autocomplete="off">
+      </div>
+    </form>
+
+    <section class="recent">
+      <h2>Últimos lançamentos</h2>
+      <div id="recentList" class="recent-loading">Carregando…</div>
+    </section>
+  </main>
+
+  <div class="save-bar">
+    <div class="save-bar-inner">
+      <button type="submit" form="entryForm" id="saveBtn" class="save-btn" disabled>Salvar lançamento</button>
+    </div>
+  </div>
+</div>
+
+<script src="./config.js"></script>
+<script>
+(function(){
+  "use strict";
+  var CFG = window.APP_CONFIG || {};
+  var SCRIPT_URL = CFG.SCRIPT_URL;
+  var TOKEN = CFG.TOKEN;
+  var CONFIGURED = SCRIPT_URL && SCRIPT_URL.indexOf('PASTE_YOUR') === -1;
+
+  var app = document.getElementById('app');
+  var form = document.getElementById('entryForm');
+  var banner = document.getElementById('banner');
+  var connStatus = document.getElementById('connStatus');
+  var connLabel = document.getElementById('connLabel');
+  var saveBtn = document.getElementById('saveBtn');
+  var recentList = document.getElementById('recentList');
+
+  var currentTipo = 'Despesa';
+  var currentStatus = 'Pago';
+  var CATS = { Despesa: [], Receita: [] };
+
+  function todayISO(){
+    var d = new Date();
+    var tzOffsetMs = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tzOffsetMs).toISOString().slice(0, 10);
+  }
+  function toBR(iso){
+    if(!iso) return '';
+    var p = iso.split('-');
+    return p[2] + '/' + p[1] + '/' + p[0];
+  }
+  function escapeHtml(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+    });
+  }
+
+  function setConn(state, label){
+    connStatus.setAttribute('data-state', state);
+    connLabel.textContent = label;
+  }
+
+  function showBanner(kind, message, opts){
+    banner.setAttribute('data-kind', kind);
+    banner.innerHTML = '';
+    var text = document.createElement('div');
+    text.textContent = message;
+    banner.appendChild(text);
+    if(opts && opts.retry){
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = opts.retryLabel || 'Tentar novamente';
+      btn.addEventListener('click', opts.retry);
+      banner.appendChild(btn);
+    }
+    banner.hidden = false;
+  }
+  function hideBanner(){ banner.hidden = true; }
+
+  function apiGet(action){
+    var url = SCRIPT_URL + '?action=' + encodeURIComponent(action) + '&token=' + encodeURIComponent(TOKEN);
+    return fetch(url).then(function(res){
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }).then(function(json){
+      if(json && json.error) throw new Error(json.error);
+      return json;
+    });
+  }
+
+  function apiPost(payload){
+    payload.token = TOKEN;
+    return fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    }).then(function(res){
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }).then(function(json){
+      if(!json || json.error) throw new Error((json && json.error) || 'Falha desconhecida');
+      return json;
+    });
+  }
+
+  function populateSelect(sel, items, placeholder){
+    sel.innerHTML = '';
+    if(!items || !items.length){
+      var o = document.createElement('option');
+      o.value = ''; o.textContent = placeholder || '—';
+      sel.appendChild(o);
+      sel.disabled = true;
+      return;
+    }
+    items.forEach(function(v){
+      var o = document.createElement('option');
+      o.value = v; o.textContent = v;
+      sel.appendChild(o);
+    });
+    sel.disabled = false;
+  }
+
+  function renderCategoria(){
+    var sel = document.getElementById('categoria');
+    populateSelect(sel, CATS[currentTipo] || [], 'Sem categorias cadastradas');
+  }
+
+  function setTipo(tipo){
+    currentTipo = tipo;
+    app.setAttribute('data-tipo', tipo);
+    document.querySelectorAll('#tipoToggle .seg-btn').forEach(function(b){
+      b.classList.toggle('active', b.getAttribute('data-tipo') === tipo);
+    });
+    renderCategoria();
+  }
+  function setStatus(status){
+    currentStatus = status;
+    document.querySelectorAll('#statusToggle .seg-btn').forEach(function(b){
+      b.classList.toggle('active', b.getAttribute('data-status') === status);
+    });
+  }
+
+  document.getElementById('tipoToggle').addEventListener('click', function(e){
+    var btn = e.target.closest('.seg-btn');
+    if(btn) setTipo(btn.getAttribute('data-tipo'));
+  });
+  document.getElementById('statusToggle').addEventListener('click', function(e){
+    var btn = e.target.closest('.seg-btn');
+    if(btn) setStatus(btn.getAttribute('data-status'));
+  });
+
+  var dataInput = document.getElementById('data');
+  var vencInput = document.getElementById('vencimento');
+  var vencIgual = document.getElementById('vencIgual');
+  dataInput.value = todayISO();
+  vencInput.value = dataInput.value;
+  dataInput.addEventListener('input', function(){
+    if(vencIgual.checked) vencInput.value = dataInput.value;
+  });
+  vencIgual.addEventListener('change', function(){
+    vencInput.disabled = vencIgual.checked;
+    if(vencIgual.checked) vencInput.value = dataInput.value;
+  });
+
+  function renderRecent(rows){
+    if(!rows.length){
+      recentList.className = 'recent-empty';
+      recentList.textContent = 'Nenhum lançamento ainda. Os lançamentos aparecem aqui depois de salvos.';
+      return;
+    }
+    recentList.className = 'recent-list';
+    recentList.innerHTML = rows.map(function(r){
+      var tipo = r[1] || '';
+      var tipoClass = tipo === 'Receita' ? 'receita' : 'despesa';
+      var status = r[10] || '';
+      var statusClass = status === 'Pendente' ? 'pendente' : 'pago';
+      return '<div class="recent-item">' +
+        '<div class="recent-main"><span class="pill pill-' + tipoClass + '">' + escapeHtml(tipo) + '</span>' +
+        '<span class="recent-cat">' + escapeHtml(r[2] || '') + '</span></div>' +
+        '<div class="recent-desc">' + escapeHtml(r[3] || '—') + '</div>' +
+        '<div class="recent-meta"><span>' + escapeHtml(r[0] || '') + '</span>' +
+        '<span class="pill pill-' + statusClass + '">' + escapeHtml(status) + '</span>' +
+        '<span class="recent-valor">' + escapeHtml(r[4] || '') + '</span></div>' +
+        '</div>';
+    }).join('');
+  }
+
+  function loadRecent(){
+    return apiGet('recent').then(function(json){
+      renderRecent((json.rows || []).slice(0, 5));
+    });
+  }
+
+  function loadLists(){
+    return apiGet('lists').then(function(json){
+      CATS.Despesa = json.despesaCategorias || [];
+      CATS.Receita = json.receitaCategorias || [];
+      renderCategoria();
+      populateSelect(document.getElementById('responsavel'), json.responsaveis, 'Cadastre em Configurações');
+      populateSelect(document.getElementById('contaCartao'), json.contas, 'Cadastre em Configurações');
+      populateSelect(document.getElementById('formaPagamento'), json.formas, 'Cadastre em Configurações');
+    });
+  }
+
+  function setSaving(saving){
+    saveBtn.disabled = saving;
+    saveBtn.textContent = saving ? 'Salvando…' : 'Salvar lançamento';
+  }
+
+  function resetAfterSave(){
+    document.getElementById('valor').value = '';
+    document.getElementById('descricao').value = '';
+    document.getElementById('observacoes').value = '';
+    document.getElementById('parcelaAtual').value = '1';
+    document.getElementById('totalParcelas').value = '1';
+  }
+
+  function errorMessage(err){
+    var msg = (err && err.message) || String(err);
+    if(msg === 'unauthorized') return 'Token não confere entre config.js e Code.gs. Confira os dois arquivos.';
+    if(msg.indexOf('HTTP') === 0) return 'O Apps Script respondeu com erro (' + msg + '). Confira se o Web App está publicado como "Qualquer pessoa".';
+    if(msg.indexOf('Failed to fetch') !== -1 || msg.indexOf('NetworkError') !== -1) return 'Não foi possível conectar ao Apps Script. Verifique sua internet e a URL em config.js.';
+    return 'Erro: ' + msg;
+  }
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    hideBanner();
+    if(!CONFIGURED){
+      showBanner('error', 'Configuração pendente: cole a URL do Web App do Apps Script em config.js.');
+      return;
+    }
+    var valorRaw = document.getElementById('valor').value;
+    var valor = parseFloat(valorRaw);
+    if(!valorRaw || isNaN(valor) || valor <= 0){
+      showBanner('error', 'Informe um valor maior que zero.');
+      document.getElementById('valor').focus();
+      return;
+    }
+    var categoria = document.getElementById('categoria').value;
+    if(!categoria){
+      showBanner('error', 'Selecione uma categoria.');
+      return;
+    }
+    if(!dataInput.value){
+      showBanner('error', 'Informe a data do lançamento.');
+      return;
+    }
+
+    var payload = {
+      data: toBR(dataInput.value),
+      tipo: currentTipo,
+      categoria: categoria,
+      descricao: document.getElementById('descricao').value.trim(),
+      valor: valor,
+      formaPagamento: document.getElementById('formaPagamento').value,
+      contaCartao: document.getElementById('contaCartao').value,
+      parcelaAtual: parseInt(document.getElementById('parcelaAtual').value || '1', 10),
+      totalParcelas: parseInt(document.getElementById('totalParcelas').value || '1', 10),
+      responsavel: document.getElementById('responsavel').value,
+      status: currentStatus,
+      vencimento: toBR(vencIgual.checked ? dataInput.value : vencInput.value),
+      observacoes: document.getElementById('observacoes').value.trim()
+    };
+
+    setSaving(true);
+    apiPost(payload)
+      .then(function(){
+        showBanner('success', 'Lançamento salvo na planilha.');
+        resetAfterSave();
+        return loadRecent();
+      })
+      .catch(function(err){
+        showBanner('error', errorMessage(err), {
+          retry: function(){ form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit', {cancelable:true})); }
+        });
+      })
+      .finally(function(){ setSaving(false); });
+  });
+
+  function init(){
+    setTipo('Despesa');
+    setStatus('Pago');
+
+    if(!CONFIGURED){
+      setConn('error', 'Não configurado');
+      showBanner('error', 'Configuração pendente: abra config.js e cole a URL do Web App do Apps Script (gerada ao publicar o Code.gs).');
+      return;
+    }
+
+    setConn('checking', 'Carregando…');
+    Promise.all([loadLists(), loadRecent()])
+      .then(function(){
+        setConn('ok', 'Conectado');
+        saveBtn.disabled = false;
+      })
+      .catch(function(err){
+        setConn('error', 'Erro de conexão');
+        showBanner('error', errorMessage(err), { retry: init });
+      });
+  }
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('./service-worker.js').catch(function(){});
+    });
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
