@@ -1,6 +1,6 @@
 {
-  "name": "Controle Financeiro",
-  "short_name": "Financeiro",
+  "name": "FinControl",
+  "short_name": "FinControl",
   "description": "Lance receitas e despesas direto na planilha do Google Sheets.",
   "start_url": "./index.html",
   "scope": "./",

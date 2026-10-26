@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Controle Financeiro</title>
+<title>FinControl</title>
 <meta name="description" content="Lance receitas e despesas direto na planilha do Google Sheets.">
 <meta name="theme-color" content="#1F3864">
 <link rel="manifest" href="./manifest.json">
@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Financeiro">
+<meta name="apple-mobile-web-app-title" content="FinControl">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
 :root{
@@ -47,6 +47,8 @@ h1,h2{font-family:var(--font-display);text-wrap:balance;margin:0}
 .app{max-width:520px;margin:0 auto;padding-bottom:96px}
 .topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--surface);border-bottom:1px solid var(--border);margin:0 -16px}
 .topbar-inner{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand img{width:34px;height:34px;border-radius:8px;flex-shrink:0}
 .topbar h1{font-size:21px;font-weight:600;color:var(--fg)}
 .topbar .sub{font-size:12px;color:var(--accent);font-weight:500;margin-top:2px}
 .conn{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);white-space:nowrap}
@@ -119,9 +121,12 @@ h1,h2{font-family:var(--font-display);text-wrap:balance;margin:0}
 <div class="app" id="app" data-tipo="Despesa">
   <header class="topbar">
     <div class="topbar-inner">
-      <div>
-        <h1>Controle Financeiro</h1>
-        <div class="sub">Lançamento rápido</div>
+      <div class="brand">
+        <img src="./icons/icon-192.png" alt="FinControl" width="34" height="34">
+        <div>
+          <h1>FinControl</h1>
+          <div class="sub">Gestão Financeira Inteligente</div>
+        </div>
       </div>
       <div class="conn" id="connStatus" data-state="checking"><span class="conn-dot"></span><span id="connLabel">Conectando…</span></div>
     </div>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cf-shell-v1';
+const CACHE_NAME = 'cf-shell-v2';
 const SHELL = [
   './',
   './index.html',
